@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  nama      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  berita    Berita[]
+
+  @@map("users")
+}
+
+model Kategori {
+  id        Int      @id @default(autoincrement())
+  nama      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  berita    Berita[]
+
+  @@map("kategori")
+}
+
+model Berita {
+  id          Int       @id @default(autoincrement())
+  judul       String
+  slug        String    @unique
+
+  ringkasan   String?
+
+  thumbnail   String?
+
+  isi         String
+
+  published   Boolean   @default(false)
+  publishedAt DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  kategoriId  Int
+  kategori    Kategori  @relation(fields: [kategoriId], references: [id], onDelete: Cascade)
+
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("berita")
+}

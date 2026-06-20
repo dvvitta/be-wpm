@@ -1,74 +1,195 @@
-import { Request, Response } from 'express';
-import { supabase } from '../config/supabase';
+import { Request, Response } from "express";
+import { prisma } from "../lib/db";
 
-export const CategoryController = {
-  // 1. Ambil semua kategori (Untuk dropdown di form input berita)
-  getAll: async (req: Request, res: Response) => {
-    try {
-      const { data, error } = await supabase
-        .from('kategori')
-        .select('*')
-        .order('nama_kategori', { ascending: true });
+export const KategoriController = {
+// GET ALL KATEGORI
+getAll: async (req: Request, res: Response) => {
+try {
+const kategori = await prisma.kategori.findMany({
+include: {
+berita: true,
+},
+orderBy: {
+createdAt: "desc",
+},
+});
 
-      if (error) throw error;
-      res.status(200).json(data);
-    } catch (error: any) {
-      res.status(500).json({ message: "Gagal mengambil kategori", error: error.message });
-    }
-  },
 
-  // 2. Tambah kategori baru (Jika admin ingin menambah jenis kategori baru)
-  create: async (req: Request, res: Response) => {
-    try {
-      const { nama_kategori } = req.body;
+  return res.status(200).json({
+    success: true,
+    data: kategori,
+  });
+} catch (error) {
+  console.error(error);
 
-      const { data, error } = await supabase
-        .from('kategori')
-        .insert([{ nama_kategori }])
-        .select();
+  return res.status(500).json({
+    success: false,
+    message: "Terjadi kesalahan server",
+  });
+}
 
-      if (error) throw error;
-      res.status(201).json({ message: "Kategori berhasil ditambahkan", data });
-    } catch (error: any) {
-      res.status(400).json({ message: error.message });
-    }
-  },
 
-  // 3. Update nama kategori
-  update: async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      const { nama_kategori } = req.body;
+},
 
-      const { data, error } = await supabase
-        .from('kategori')
-        .update({ nama_kategori })
-        .eq('id', id)
-        .select();
+// GET KATEGORI BY ID
+getById: async (req: Request, res: Response) => {
+try {
+const id = Number(req.params.id);
 
-      if (error) throw error;
-      if (data.length === 0) return res.status(404).json({ message: "Kategori tidak ditemukan" });
 
-      res.status(200).json({ message: "Kategori berhasil diupdate", data });
-    } catch (error: any) {
-      res.status(400).json({ message: error.message });
-    }
-  },
+  const kategori = await prisma.kategori.findUnique({
+    where: {
+      id,
+    },
+    include: {
+      berita: true,
+    },
+  });
 
-  // 4. Hapus kategori
-  delete: async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-
-      const { error } = await supabase
-        .from('kategori')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      res.status(200).json({ message: "Kategori berhasil dihapus" });
-    } catch (error: any) {
-      res.status(400).json({ message: "Gagal hapus kategori (Mungkin masih digunakan oleh berita lain)", error: error.message });
-    }
+  if (!kategori) {
+    return res.status(404).json({
+      success: false,
+      message: "Kategori tidak ditemukan",
+    });
   }
+
+  return res.status(200).json({
+    success: true,
+    data: kategori,
+  });
+} catch (error) {
+  console.error(error);
+
+  return res.status(500).json({
+    success: false,
+    message: "Terjadi kesalahan server",
+  });
+}
+
+
+},
+
+// CREATE KATEGORI
+create: async (req: Request, res: Response) => {
+try {
+const { nama } = req.body;
+
+
+  if (!nama) {
+    return res.status(400).json({
+      success: false,
+      message: "Nama kategori wajib diisi",
+    });
+  }
+
+  const slug = nama
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-");
+
+  const existingKategori = await prisma.kategori.findFirst({
+    where: {
+      OR: [
+        { nama },
+        { slug }
+      ],
+    },
+  });
+
+  if (existingKategori) {
+    return res.status(409).json({
+      success: false,
+      message: "Kategori sudah ada",
+    });
+  }
+
+  const kategori = await prisma.kategori.create({
+    data: {
+      nama,
+      slug,
+    },
+  });
+
+  return res.status(201).json({
+    success: true,
+    message: "Kategori berhasil dibuat",
+    data: kategori,
+  });
+} catch (error) {
+  console.error(error);
+
+  return res.status(500).json({
+    success: false,
+    message: "Terjadi kesalahan server",
+  });
+}
+
+
+},
+
+// UPDATE KATEGORI
+update: async (req: Request, res: Response) => {
+try {
+const id = Number(req.params.id);
+const { nama } = req.body;
+
+  const slug = nama
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-");
+
+  const kategori = await prisma.kategori.update({
+    where: {
+      id,
+    },
+    data: {
+      nama,
+      slug,
+    },
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "Kategori berhasil diupdate",
+    data: kategori,
+  });
+} catch (error) {
+  console.error(error);
+
+  return res.status(500).json({
+    success: false,
+    message: "Terjadi kesalahan server",
+  });
+}
+
+
+},
+
+// DELETE KATEGORI
+delete: async (req: Request, res: Response) => {
+try {
+const id = Number(req.params.id);
+
+  await prisma.kategori.delete({
+    where: {
+      id,
+    },
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "Kategori berhasil dihapus",
+  });
+} catch (error) {
+  console.error(error);
+
+  return res.status(500).json({
+    success: false,
+    message: "Terjadi kesalahan server",
+  });
+}
+
+},
 };

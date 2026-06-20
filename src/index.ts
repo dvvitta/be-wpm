@@ -1,10 +1,11 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+
+import authRoutes from "./routes/authRoutes";
 import beritaRoutes from "./routes/beritaRoute";
 import categoryRoutes from "./routes/categoryRoute";
 
-// Inisialisasi dotenv agar bisa baca file .env
 dotenv.config();
 
 const app = express();
@@ -14,20 +15,23 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Default Route
+// Health Check
 app.get("/", (req, res) => {
-  res.send("Server is running...");
+res.send("Server is running...");
 });
 
-// Daftarkan Route Berita
-// Jadi nanti aksesnya: http://localhost:3000/api/berita
-app.use("/api", beritaRoutes);
-app.use("/api", categoryRoutes);
+// Auth Routes
+app.use("/api/auth", authRoutes);
 
-// Jalankan Server
+// Kategori Routes
+app.use("/api/kategori", categoryRoutes);
+
+// Berita Routes
+app.use("/api/berita", beritaRoutes);
+
+// Start Server
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+console.log(`Server running at http://localhost:${port}`);
 });
 
-// Export app untuk kebutuhan Vercel (Serverless Functions)
 export default app;
